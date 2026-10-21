@@ -52,18 +52,28 @@ let runtimePlayer = { x: 0, y: 0, vx: 0, vy: 0, spawnX: 0, spawnY: 0 };
 let keys = {};
 
 // --- SECURE ROUTER INTERCEPTOR ---
+// --- UPDATED SECURE ROUTER INTERCEPTOR ---
 function router() {
     gameState.currentPath = window.location.pathname;
     const app = document.getElementById('app-view');
     
     if (animationFrameId) cancelAnimationFrame(animationFrameId);
 
-    // Force redirect unregistered visitors to the advertisement card
+    // 1. CHECK FOR 404 PATHS FIRST
+    // If the path isn't home and doesn't start with a project workspace, it's a 404 error!
+    if (gameState.currentPath !== '/' && gameState.currentPath !== '' && !gameState.currentPath.startsWith('/new/')) {
+        render404Page(app);
+        return;
+    }
+
+    // 2. CHECK FOR LOGIN VALIDATION SECOND
+    // If they are on a valid path but logged out, redirect them to the sign-up page
     if (!currentUser) {
         renderAdvertisementPage(app);
         return;
     }
 
+    // 3. CORE REGISTERED APPLICATION VIEWS
     if (gameState.currentPath === '/' || gameState.currentPath === '') {
         renderHomePage(app);
     } else if (gameState.currentPath === '/admin') {
@@ -76,8 +86,6 @@ function router() {
         const projectId = gameState.currentPath.split('/new/');
         renderEditorPage(app, projectId);
         initEditorEngine();
-    } else {
-        render404Page(app);
     }
 }
 
