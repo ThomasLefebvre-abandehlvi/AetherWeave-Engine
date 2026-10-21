@@ -105,6 +105,7 @@ function renderHomePage(container) {
 
     container.innerHTML = `
         <div class="home-container">
+        <img src="aetherweave.jpg" alt="AetherWeave Logo" style="width:120px; height:120px; object-fit:contain; margin-bottom:20px;">
             <h1 class="brand-logo">AetherWeave</h1>
             <p>Woven Profile Account Active: <b>${currentUser.email}</b></p>
             <p>An elegant, web-native 2D grid builder. Weave your tiles, simulate your game loop instantly, and compile code arrays.</p>
