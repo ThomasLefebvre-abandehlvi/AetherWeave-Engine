@@ -1,37 +1,38 @@
 // --- FIREBASE SECURITY REGISTRY ---
 const firebaseConfig = {
   apiKey: "AIzaSyAt1zpo19sS0Fm8wMrBcGJwbHpHMIhFag0",
-  authDomain: "aetherweave-edtor.firebaseapp.com",
+  authDomain: "://firebaseapp.com",
   projectId: "aetherweave-edtor",
   storageBucket: "aetherweave-edtor.firebasestorage.app",
   messagingSenderId: "967617394273",
   appId: "1:967617394273:web:f2a797386334f283badc20"
 };
 
-// INITIALIZE INSTANTLY: Force Firebase to load immediately so its core functions are ready
-if (typeof firebase !== 'undefined' && !firebase.apps.length) {
-    firebase.initializeApp(firebaseConfig);
-}
-
-// Assign global references immediately so the authentication listeners never drop variables
-const auth = (typeof firebase !== 'undefined') ? firebase.auth() : null;
-const db = (typeof firebase !== 'undefined') ? firebase.firestore() : null;
-
+// Global variables declared cleanly out in the open
+let auth;
+let db;
 let currentUser = null;
 let isSignUpView = true;
 
-// Secure initialization listener path
-if (auth) {
-    auth.onAuthStateChanged(user => {
-        currentUser = user;
-        // Trigger the engine router only once auth finishes its internal configuration check
-        if (document.readyState === 'loading') {
-            window.addEventListener('DOMContentLoaded', router);
-        } else {
-            router();
+// SAFETY INTERCEPT: Wait until the browser DOM structure is 100% built before setting up Firebase
+window.addEventListener('DOMContentLoaded', () => {
+    if (typeof firebase !== 'undefined') {
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
         }
-    });
-}
+        auth = firebase.auth();
+        db = firebase.firestore();
+
+        // Safe continuous authentication listener check
+        auth.onAuthStateChanged(user => {
+            currentUser = user;
+            router(); 
+        });
+    } else {
+        console.error("Firebase library failed to download. Check your internet connection or HTML CDN links.");
+    }
+});
+
 
 // --- ENGINE ARCHITECTURE STATE ---
 let gameState = {
@@ -424,15 +425,16 @@ function compileProjectJSON() {
 // --- APP ROUTING CONTROLLER UTILITIES ---
 function navigate(url) {
     if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-        // Keeps the sandbox stable locally during browser forms execution
+        // Keeps local machine preview tabs stable without folder hunting crashes
         window.history.pushState({}, '', '/index.html');
         router();
     } else {
-        // Keeps your beautiful clean slash extensions working perfectly on Vercel cloud
+        // Keeps clean web path extensions working flawlessly on live Netlify cloud servers
         window.history.pushState({}, '', url);
         router();
     }
 }
+
 
 
 
