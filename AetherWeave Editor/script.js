@@ -1,34 +1,37 @@
 // --- FIREBASE SECURITY REGISTRY ---
 const firebaseConfig = {
   apiKey: "AIzaSyAt1zpo19sS0Fm8wMrBcGJwbHpHMIhFag0",
-  authDomain: "://firebaseapp.com",
+  authDomain: "aetherweave-edtor.firebaseapp.com",
   projectId: "aetherweave-edtor",
   storageBucket: "aetherweave-edtor.firebasestorage.app",
   messagingSenderId: "967617394273",
   appId: "1:967617394273:web:f2a797386334f283badc20"
 };
 
-// Declare references globally so authentication buttons can read them instantly
-let auth;
-let db;
+// INITIALIZE INSTANTLY: Force Firebase to load immediately so its core functions are ready
+if (typeof firebase !== 'undefined' && !firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+}
+
+// Assign global references immediately so the authentication listeners never drop variables
+const auth = (typeof firebase !== 'undefined') ? firebase.auth() : null;
+const db = (typeof firebase !== 'undefined') ? firebase.firestore() : null;
+
 let currentUser = null;
 let isSignUpView = true;
 
-// Force the execution layer to wait for the browser to load index scripts
-window.addEventListener('load', () => {
-    if (!firebase.apps.length) {
-        firebase.initializeApp(firebaseConfig);
-    }
-    auth = firebase.auth();
-    db = firebase.firestore();
-
-    // Listen for authentication changes safely inside the loaded scope
+// Secure initialization listener path
+if (auth) {
     auth.onAuthStateChanged(user => {
         currentUser = user;
-        router(); 
+        // Trigger the engine router only once auth finishes its internal configuration check
+        if (document.readyState === 'loading') {
+            window.addEventListener('DOMContentLoaded', router);
+        } else {
+            router();
+        }
     });
-});
-
+}
 
 // --- ENGINE ARCHITECTURE STATE ---
 let gameState = {
