@@ -106,7 +106,6 @@ function renderHomePage(container) {
 
     container.innerHTML = `
         <div class="home-container">
-        <img src="aetherweave.jpg" alt="AetherWeave Logo" style="width:120px; height:120px; object-fit:contain; margin-bottom:20px;">
             <h1 class="brand-logo">AetherWeave</h1>
             <p>Woven Profile Account Active: <b>${currentUser.email}</b></p>
             <p>An elegant, web-native 2D grid builder. Weave your tiles, simulate your game loop instantly, and compile code arrays.</p>
@@ -434,19 +433,22 @@ function navigate(url) {
         router();
     }
 }
-
-
-
-
 window.addEventListener('popstate', router);
 window.addEventListener('DOMContentLoaded', router);
 // --- NEW ADVERTISEMENT & AUTHENTICATION RENDERING FLOW ---
+
+// --- UNBREAKABLE ADVERTISEMENT PAGE WITH EMBEDDED BRAND LOGO GRAPHIC ---
 function renderAdvertisementPage(container) {
     container.innerHTML = `
         <div class="auth-wrapper">
             <div class="ad-side">
-                <h2>AetherWeave</h2>
-                <div class="quote-box">
+                <!-- INJECTED LIVE LOGO GRAPHIC: Inline centered image asset alignment -->
+                <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 20px;">
+                    <img src="aetherweave.jpg" alt="AetherWeave Icon Logo" style="width: 60px; height: 60px; border-radius: 12px; border: 1px solid var(--border-glow); box-shadow: 0 0 20px var(--aether-cyan-glow); object-fit: cover;">
+                    <h2 style="font-size: 2.8rem; font-weight: 900; margin: 0; background: linear-gradient(45deg, var(--aether-cyan), var(--aether-purple)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;">AetherWeave</h2>
+                </div>
+                
+                <div class="quote-box" style="margin-top: 5px;">
                     "Weave your imagination into playable 2D worlds instantly. Don't just play games—build them."
                 </div>
                 <p>Join thousands of solo developers crafting high-performance, grid-based games entirely inside their web browsers completely for free.</p>
@@ -461,32 +463,24 @@ function renderAdvertisementPage(container) {
                         <label for="auth-remember">Remember password on this device</label>
                     </div>
                     
-                    <button class="btn" id="btn-auth-submit" style="width:100%; margin-top:10px;">
+                    <button class="btn" onclick="executeEmailAuthAction()" style="width:100%; margin-top:10px;">
                         ${isSignUpView ? 'Weave New Account' : 'Log In to Loom'}
                     </button>
                     
-                    <button class="btn" id="btn-google-auth" style="width:100%; margin-top:10px; background:#ffffff; color:#121214; box-shadow:none; display:flex; align-items:center; justify-content:center; gap:10px; border:1px solid #222230;">
+                    <button class="btn" onclick="executeGoogleAuthAction()" style="width:100%; margin-top:10px; background:#ffffff; color:#121214; box-shadow:none; display:flex; align-items:center; justify-content:center; gap:10px; border:1px solid #222230;">
                         <img src="google.jpg" alt="Google Logo" style="width:18px; height:18px; object-fit:contain;">
                         <b>Continue with Google</b>
                     </button>
                     
-                    <div class="auth-toggle-link" id="auth-toggle" style="margin-top:20px; text-align:center;">
+                    <div class="auth-toggle-link" onclick="toggleAuthSubView()" style="margin-top:20px; text-align:center;">
                         ${isSignUpView ? 'Have an Account? Log in!' : 'New to AetherWeave? Sign up here!'}
                     </div>
                 </div>
             </div>
         </div>
     `;
-
-    // Re-bind listeners immediately after drawing elements
-    document.getElementById('auth-toggle').addEventListener('click', () => {
-        isSignUpView = !isSignUpView;
-        renderAdvertisementPage(container);
-    });
-    
-    document.getElementById('btn-auth-submit').addEventListener('click', executeEmailAuthAction);
-    document.getElementById('btn-google-auth').addEventListener('click', executeGoogleAuthAction);
 }
+
 
 function executeEmailAuthAction() {
     const email = document.getElementById('auth-email').value;
