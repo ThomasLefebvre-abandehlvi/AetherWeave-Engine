@@ -10,12 +10,17 @@ const firebaseConfig = {
     appId: "1:102938475610:web:abc123def456"
 };
 
-// Initialize Firebase
-if (!firebase.apps.length) {
-    firebase.initializeApp(firebaseConfig);
+// Initialize Firebase safely
+if (typeof firebase !== 'undefined') {
+    if (!firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+    }
+} else {
+    console.error("Firebase SDK failed to load from CDN.");
 }
-const auth = firebase.auth();
-const db = firebase.firestore();
+
+const auth = typeof firebase !== 'undefined' ? firebase.auth() : null;
+const db = typeof firebase !== 'undefined' ? firebase.firestore() : null;
 
 // ==========================================
 // 2. GLOBAL APPLICATION STATE

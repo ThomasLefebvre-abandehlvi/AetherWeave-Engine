@@ -9,10 +9,15 @@
     <link rel="icon" href="aetherweave.jpg" type="image/jpeg">
     <link rel="stylesheet" href="style.css">
     
-    <!-- Firebase App & Services CDNs (v8 Compat) -->
-    <script defer src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script defer src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-    <script defer src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <!-- Firebase App (Core) -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <!-- Firebase Auth -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <!-- Firebase Firestore -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+    <!-- Application Logic (Loaded last so firebase is defined) -->
+    <script src="script.js"></script>
 </head>
 
 <body>
