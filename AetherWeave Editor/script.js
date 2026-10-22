@@ -1,7 +1,6 @@
-// --- FIREBASE SECURITY REGISTRY ---
 const firebaseConfig = {
   apiKey: "AIzaSyAt1zpo19sS0Fm8wMrBcGJwbHpHMIhFag0",
-  authDomain: "://firebaseapp.com",
+  authDomain: "aetherweave-edtor.firebaseapp.com", // Fixed: Added project name prefix
   projectId: "aetherweave-edtor",
   storageBucket: "aetherweave-edtor.firebasestorage.app",
   messagingSenderId: "967617394273",
