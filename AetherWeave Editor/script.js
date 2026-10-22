@@ -267,7 +267,16 @@ function renderPlatformDashboardPage(container) {
         <div class="dashboard-wrapper">
             <nav class="dashboard-nav">
                 <div style="display:flex; align-items:center; gap:12px;">
-                    <img src="aetherweave.jpg" style="width:32px; height:32px; border-radius:6px;" alt="Loom Logo">
+                    <svg width="32" height="32" viewBox="0 0 100 100" style="border-radius:6px; background:#13131a; border:1px solid var(--border-glow);">
+                    <circle cx="50" cy="50" r="40" fill="none" stroke="url(#aetherGrad)" stroke-width="8" />
+                    <path d="M 30 50 Q 50 20 70 50 T 30 50" fill="none" stroke="#00e5ff" stroke-width="6" />
+                    <defs>
+                    <linearGradient id="aetherGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stop-color="#00e5ff" />
+                      <stop offset="100%" stop-color="#7000ff" />
+                    </linearGradient>
+                  </defs>
+                </svg>
                     <span class="project-title" style="font-size:1.3rem;">AetherWeave</span>
                 </div>
                 <div class="nav-tabs">
@@ -334,7 +343,16 @@ function renderActiveTabContent() {
                 gridHTML += `
                     <div class="project-card">
                         <div style="display:flex; align-items:center; gap:10px; margin-bottom:5px;">
-                            <img src="${proj.authorAvatar || 'aetherweave.jpg'}" style="width:28px; height:28px; border-radius:50%; object-fit:cover; border:1px solid var(--aether-cyan);">
+                            <svg width="28" height="28" viewBox="0 0 100 100" style="border-radius:50%; background:#13131a; border:1px solid var(--border-glow);">
+                                <circle cx="50" cy="50" r="40" fill="none" stroke="url(#aetherGrad)" stroke-width="8" />
+                                <path d="M 30 50 Q 50 20 70 50 T 30 50" fill="none" stroke="#00e5ff" stroke-width="6" />
+                                <defs>
+                                    <linearGradient id="aetherGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                        <stop offset="0%" stop-color="#00e5ff" />
+                                        <stop offset="100%" stop-color="#7000ff" />
+                                    </linearGradient>
+                                </defs>
+                            </svg>
                             <div style="font-weight:bold; font-size:1.2rem; color:var(--aether-cyan);">🎮 ${proj.name}</div>
                         </div>
                         <div class="card-meta"><span>By: ${proj.author || 'Anonymous'}</span> <span>${dateDisplay}</span></div>
