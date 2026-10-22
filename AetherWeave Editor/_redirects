@@ -1,1 +1,7 @@
-/*    /index.html    200!
+/google-sign-in    /index.html    200
+/browse            /index.html    200
+/dashboard         /index.html    200
+/feed              /index.html    200
+/chat              /index.html    200
+/admin             /index.html    200
+/*                 /index.html    200
