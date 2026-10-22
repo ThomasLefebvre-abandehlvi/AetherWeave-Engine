@@ -445,14 +445,11 @@ function navigate(url) {
 }
 window.addEventListener('popstate', router);
 window.addEventListener('DOMContentLoaded', router);
-// --- NEW ADVERTISEMENT & AUTHENTICATION RENDERING FLOW ---
-
 // --- UNBREAKABLE ADVERTISEMENT PAGE WITH EMBEDDED BRAND LOGO GRAPHIC ---
 function renderAdvertisementPage(container) {
     container.innerHTML = `
         <div class="auth-wrapper">
             <div class="ad-side">
-                <!-- INJECTED LIVE LOGO GRAPHIC: Inline centered image asset alignment -->
                 <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 20px;">
                     <img src="aetherweave.jpg" alt="AetherWeave Icon Logo" style="width: 60px; height: 60px; border-radius: 12px; border: 1px solid var(--border-glow); box-shadow: 0 0 20px var(--aether-cyan-glow); object-fit: cover;">
                     <h2 style="font-size: 2.8rem; font-weight: 900; margin: 0; background: linear-gradient(45deg, var(--aether-cyan), var(--aether-purple)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;">AetherWeave</h2>
@@ -491,10 +488,25 @@ function renderAdvertisementPage(container) {
     `;
 }
 
+// Toggle between Sign Up & Log In view states
+function toggleAuthSubView() {
+    isSignUpView = !isSignUpView;
+    const app = document.getElementById('app-view');
+    renderAdvertisementPage(app);
+}
 
 function executeEmailAuthAction() {
-    const email = document.getElementById('auth-email').value;
-    const password = document.getElementById('auth-password').value;
+    const emailInput = document.getElementById('auth-email');
+    const passwordInput = document.getElementById('auth-password');
+    if (!emailInput || !passwordInput) return;
+
+    const email = emailInput.value.trim();
+    const password = passwordInput.value;
+    if (!email || !password) {
+        alert("Please enter both an email address and password.");
+        return;
+    }
+
     const remember = document.getElementById('auth-remember').checked;
     const persistenceMode = remember ? firebase.auth.Auth.Persistence.LOCAL : firebase.auth.Auth.Persistence.SESSION;
 
@@ -514,51 +526,20 @@ function executeEmailAuthAction() {
 }
 
 function executeGoogleAuthAction() {
-    const provider = new firebase.auth.GoogleAuthProvider();
-    auth.signInWithPopup(provider).then((cred) => {
-        return db.collection('users').doc(cred.user.uid).set({
-            uid: cred.user.uid,
-            email: cred.user.email,
-            registeredAt: firebase.firestore.FieldValue.serverTimestamp()
-        }, { merge: true });
-    }).catch(err => alert("Google Sign-In Error: " + err.message));
-}
-
-function renderAdminDashboardPage(container) {
-    container.innerHTML = `
-        <div class="admin-layout">
-            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-glow); padding-bottom:20px;">
-                <h1 class="brand-logo" style="font-size:2.5rem; margin:0;">Loom Administration</h1>
-                <button class="btn" id="btn-admin-back">← Back to Engine</button>
-            </div>
-            <p style="margin-top:20px;">Secure overview of users synced through your cloud Firestore datastore clusters.</p>
-            <div class="admin-grid" id="admin-user-list"><p style="color:#8e8ea0;">Retrieving active databases...</p></div>
-        </div>
-    `;
-    document.getElementById('btn-admin-back').addEventListener('click', () => navigate('/'));
-
-    db.collection('users').orderBy('registeredAt', 'desc').get().then(snapshot => {
-        const listContainer = document.getElementById('admin-user-list');
-        listContainer.innerHTML = "";
-        snapshot.forEach(doc => {
-            const data = doc.data();
-            const dateDisplay = data.registeredAt ? new Date(data.registeredAt.seconds * 1000).toLocaleDateString() : 'Pending Sync';
-            const card = document.createElement('div');
-            card.className = "user-row";
-            card.innerHTML = `<div style="font-weight:bold; color:var(--aether-cyan); margin-bottom:5px;">User Node Instance</div><div style="font-size:0.9rem; margin-bottom:5px;">Email: <b>${data.email}</b></div><div style="font-size:0.8rem; color:#8e8ea0;">Registered On: ${dateDisplay}</div>`;
-            listContainer.appendChild(card);
-        });
-    }).catch(err => {
-        document.getElementById('admin-user-list').innerHTML = `<p style="color:var(--aether-red);">Database Error: ${err.message}</p>`;
-    });
+    navigate('/google-sign-in');
 }
 
 // =========================================================================
-// 1. INTERACTIVE GOOGLE HANDSHAKE PORTAL SCREEN
+// 1. INTERACTIVE GOOGLE HANDSHAKE PORTAL SCREEN (WITH BACK BUTTON)
 // =========================================================================
 function renderGoogleHandshakePage(container) {
     container.innerHTML = `
-        <div class="handshake-container">
+        <div class="handshake-container" style="position: relative;">
+            <!-- BACK BUTTON -->
+            <button class="btn" id="btn-handshake-back" style="position: absolute; top: 30px; left: 30px; background: rgba(255,255,255,0.08); border: 1px solid var(--border-glow); box-shadow: none;">
+                ← Back to Login
+            </button>
+
             <div class="handshake-bridge">
                 <img src="aetherweave.jpg" class="handshake-logo" alt="AetherWeave Icon">
                 <div class="meeting-hands">🤝</div>
@@ -574,24 +555,31 @@ function renderGoogleHandshakePage(container) {
         </div>
     `;
 
+    // Attach Back Button Click Event
+    document.getElementById('btn-handshake-back').addEventListener('click', () => {
+        navigate('/');
+    });
+
     // Initialize Google Pop-up window authentication actions
     const provider = new firebase.auth.GoogleAuthProvider();
     auth.signInWithPopup(provider).then((cred) => {
-        // Sync registered account profiles directly down into Firestore tables
         return db.collection('users').doc(cred.user.uid).set({
             uid: cred.user.uid,
             email: cred.user.email,
             registeredAt: firebase.firestore.FieldValue.serverTimestamp()
         }, { merge: true }).then(() => {
-            document.getElementById('handshake-status').innerText = "Security verified! Redirecting to dashboard loom...";
+            const statusEl = document.getElementById('handshake-status');
+            if (statusEl) statusEl.innerText = "Security verified! Redirecting to dashboard loom...";
             setTimeout(() => navigate('/'), 1200);
         });
     }).catch(err => {
-        alert("Google Authentication Intercept Error: " + err.message);
+        // Only alert if the user didn't intentionally close the popup or press back
+        if (err.code !== 'auth/popup-closed-by-user') {
+            alert("Google Authentication Intercept Error: " + err.message);
+        }
         navigate('/');
     });
 }
-
 // Redirect trigger for your ad screen button layout
 function executeGoogleAuthAction() {
     navigate('/google-sign-in');
