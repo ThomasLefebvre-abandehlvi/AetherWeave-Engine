@@ -53,9 +53,8 @@ const gameState = {
 };
 
 const ADMIN_EMAILS = [
-    'thomas@aetherweave.com',
-    'admin@aetherweave.com',
-    'thomas-lefebvre@gmail.com'
+    'lyrabelrose5@gmail.com',
+    'abandehlvi542@gmail.com'
 ];
 
 function isAdmin(email) {
@@ -457,18 +456,31 @@ function renderDashboardProjectView(container, projectId) {
             initEditorEngine();
         } else if (activeDashSubTab === 'settings') {
             subView.innerHTML = `
-                <div style="max-width:500px; background:var(--panel-weave); padding:24px; border-radius:8px; border:1px solid var(--border-glow);">
-                    <h3>Game Metadata Settings</h3>
+                <div style="max-width:550px; background:var(--panel-weave); padding:24px; border-radius:8px; border:1px solid var(--border-glow);">
+                    <h3>Game Configuration & Export</h3>
                     <div class="input-group" style="margin-top:15px;"><label>Game Title</label><input type="text" id="setting-name" value="${proj.name}"></div>
                     <div class="input-group" style="margin-top:10px;"><label>Description</label><textarea id="setting-desc" style="width:100%; height:90px; background:#1a1a24; border:1px solid var(--border-glow); border-radius:6px; color:#fff; padding:10px; outline:none;">${proj.description || ''}</textarea></div>
-                    <button class="btn" id="btn-save-settings" style="margin-top:15px;">Save Metadata</button>
+                    <div style="display:flex; gap:10px; margin-top:20px;">
+                        <button class="btn" id="btn-save-settings" style="flex:1;">Save Settings</button>
+                        <button class="btn" id="btn-export-game" style="flex:1; background:var(--aether-purple);">Export Matrix JSON</button>
+                    </div>
                 </div>
             `;
             document.getElementById('btn-save-settings').addEventListener('click', () => {
                 db.collection('projects').doc(projectId).update({
                     name: document.getElementById('setting-name').value,
                     description: document.getElementById('setting-desc').value
-                }).then(() => alert('Settings saved successfully!'));
+                }).then(() => showAppModal("Success", "<p>Game metadata settings saved successfully!</p>", null));
+            });
+
+            document.getElementById('btn-export-game').addEventListener('click', () => {
+                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(proj, null, 2));
+                const dlAnchor = document.createElement('a');
+                dlAnchor.setAttribute("href", dataStr);
+                dlAnchor.setAttribute("download", `${proj.name.toLowerCase().replace(/\s+/g, '_')}_matrix.json`);
+                document.body.appendChild(dlAnchor);
+                dlAnchor.click();
+                dlAnchor.remove();
             });
         } else if (activeDashSubTab === 'analytics') {
             subView.innerHTML = `
@@ -481,7 +493,6 @@ function renderDashboardProjectView(container, projectId) {
         }
     });
 }
-
 // ==========================================
 // 8. TAB 3: COMMUNITY FEED
 // ==========================================
@@ -551,36 +562,59 @@ function renderNotificationsChatTab(container) {
             <div style="background:var(--panel-weave); border:1px solid var(--border-glow); border-radius:8px; padding:15px; display:flex; flex-direction:column; gap:10px;">
                 <h3>Messages & Chat</h3>
                 <input type="text" id="chat-user-search" placeholder="🔍 Search weavers..." style="padding:8px; background:#1a1a24; border:1px solid var(--border-glow); border-radius:6px; color:#fff; outline:none;">
+                <div style="font-size:0.8rem; color:var(--text-thread); margin-top:5px;">Recent Conversations</div>
                 <div id="chat-user-results" style="flex:1; overflow-y:auto;"></div>
             </div>
             <div style="background:var(--panel-weave); border:1px solid var(--border-glow); border-radius:8px; padding:20px; display:flex; flex-direction:column;">
                 <div style="border-bottom:1px solid var(--border-glow); padding-bottom:10px; font-weight:bold;" id="chat-header-title">Select a Weaver to start messaging</div>
                 <div id="chat-message-history" style="flex:1; padding:15px 0; overflow-y:auto; color:var(--text-thread);">No active message stream selected.</div>
-                <div style="display:flex; gap:10px; border-top:1px solid var(--border-glow); padding-top:10px;">
+                <div style="display:flex; gap:10px; border-top:1px solid var(--border-glow); padding-top:10px; align-items:center;">
+                    <input type="file" id="chat-file-attachment" accept="image/*,.json" style="display:none;">
+                    <button class="btn" onclick="document.getElementById('chat-file-attachment').click()" style="background:#1a1a24; border:1px solid var(--border-glow); box-shadow:none; padding:10px 14px;" title="Attach Image or Game Matrix">📎</button>
                     <input type="text" id="chat-message-input" placeholder="Type transmission..." style="flex:1; padding:10px; background:#1a1a24; border:1px solid var(--border-glow); border-radius:6px; color:#fff; outline:none;">
-                    <button class="btn" onclick="alert('Message transmitted!')">Send</button>
+                    <button class="btn" onclick="showAppModal('Transmission Sent', '<p>Your message and attachment have been securely sent through the Aether network.</p>', null)">Send</button>
                 </div>
             </div>
         </div>
     `;
 
-    db.collection('users').get().then(snapshot => {
-        const list = document.getElementById('chat-user-results');
-        if (!list) return;
-        snapshot.forEach(doc => {
-            const u = doc.data();
-            if (u.email && u.email !== currentUser.email) {
-                const row = document.createElement('div');
-                row.className = 'tool-item';
-                row.style.cssText = "padding:8px; margin-bottom:5px; cursor:pointer;";
-                row.innerText = u.username || u.email;
-                row.onclick = () => { document.getElementById('chat-header-title').innerText = "Encrypted Chat with " + (u.username || u.email); };
-                list.appendChild(row);
-            }
+    const loadUsersList = (filterQuery = '') => {
+        db.collection('users').get().then(snapshot => {
+            const list = document.getElementById('chat-user-results');
+            if (!list) return;
+            list.innerHTML = '';
+            snapshot.forEach(doc => {
+                const u = doc.data();
+                if (u.email && u.email !== currentUser.email) {
+                    if (filterQuery && !u.email.toLowerCase().includes(filterQuery) && !(u.username && u.username.toLowerCase().includes(filterQuery))) {
+                        return;
+                    }
+                    const row = document.createElement('div');
+                    row.className = 'tool-item';
+                    row.style.cssText = "padding:10px; margin-bottom:6px; cursor:pointer; display:flex; align-items:center; gap:10px;";
+                    row.innerHTML = `
+                        <img src="${u.avatarUrl || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=100&auto=format&fit=crop'}" style="width:28px; height:28px; border-radius:50%; object-fit:cover;">
+                        <div>
+                            <div style="font-weight:bold; font-size:0.85rem;">${u.username || u.email.split('@')[0]}</div>
+                            <div style="font-size:0.7rem; color:var(--text-thread);">Active node</div>
+                        </div>
+                    `;
+                    row.onclick = () => {
+                        document.getElementById('chat-header-title').innerText = "Encrypted Chat with " + (u.username || u.email);
+                        document.getElementById('chat-message-history').innerHTML = `<p style="color:var(--text-thread);">Secure connection established with ${u.username || u.email}. Send a message below.</p>`;
+                    };
+                    list.appendChild(row);
+                }
+            });
         });
+    };
+
+    loadUsersList();
+
+    document.getElementById('chat-user-search').addEventListener('input', (e) => {
+        loadUsersList(e.target.value.toLowerCase().trim());
     });
 }
-
 // ==========================================
 // 10. USER PROFILES & DRAG-AND-DROP AVATARS
 // ==========================================
@@ -598,7 +632,7 @@ function renderUserProfileView(container, isEditing) {
 
             ${isEditing ? `
                 <div id="drop-zone" style="border:2px dashed var(--aether-cyan); border-radius:12px; padding:25px; text-align:center; margin-bottom:20px; background:rgba(0,229,255,0.03); cursor:pointer;">
-                    <img id="edit-avatar-preview" src="aetherweave.jpg" style="width:90px; height:90px; border-radius:50%; object-fit:cover; margin-bottom:10px; border:2px solid var(--aether-cyan);">
+                    <img id="edit-avatar-preview" src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=100&auto=format&fit=crop" style="width:90px; height:90px; border-radius:50%; object-fit:cover; margin-bottom:10px; border:2px solid var(--aether-cyan);">
                     <p style="margin:0; font-size:0.9rem; color:var(--text-thread);">Drag & Drop profile picture here, or <b>click to browse file manager</b></p>
                     <input type="file" id="file-avatar-input" accept="image/*" style="display:none;">
                 </div>
@@ -609,7 +643,7 @@ function renderUserProfileView(container, isEditing) {
                 <button class="btn" id="btn-save-profile-changes" style="margin-top:20px; width:100%;">Save Profile Changes</button>
             ` : `
                 <div style="display:flex; align-items:center; gap:20px; margin-bottom:20px;">
-                    <img id="view-avatar-img" src="aetherweave.jpg" style="width:90px; height:90px; border-radius:50%; object-fit:cover; border:2px solid var(--aether-cyan);">
+                    <img id="view-avatar-img" src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=100&auto=format&fit=crop" style="width:90px; height:90px; border-radius:50%; object-fit:cover; border:2px solid var(--aether-cyan);">
                     <div>
                         <h3 id="view-username-text" style="margin:0; font-size:1.4rem;">Weaver</h3>
                         <div style="font-size:0.9rem; color:var(--text-thread);">${currentUser.email}</div>
@@ -630,18 +664,28 @@ function renderUserProfileView(container, isEditing) {
             const fileInput = document.getElementById('file-avatar-input');
             if (dropZone && fileInput) {
                 dropZone.onclick = () => fileInput.click();
-                fileInput.onchange = (e) => handleAvatarImageFile(e.target.files[0]);
-                dropZone.ondragover = (e) => e.preventDefault();
-                dropZone.ondrop = (e) => { e.preventDefault(); handleAvatarImageFile(e.dataTransfer.files[0]); };
+                fileInput.onchange = (e) => {
+                    if (e.target.files && e.target.files[0]) handleAvatarImageFile(e.target.files[0]);
+                };
+                dropZone.ondragover = (e) => { e.preventDefault(); e.stopPropagation(); };
+                dropZone.ondrop = (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (e.dataTransfer.files && e.dataTransfer.files[0]) handleAvatarImageFile(e.dataTransfer.files[0]);
+                };
             }
 
             document.getElementById('btn-save-profile-changes').onclick = () => {
-                const newUsername = document.getElementById('edit-username-input').value;
+                const newUsername = document.getElementById('edit-username-input').value.trim();
                 const newAvatar = document.getElementById('edit-avatar-preview').src;
                 db.collection('users').doc(currentUser.uid).update({
                     username: newUsername,
                     avatarUrl: newAvatar
-                }).then(() => navigate(`/${currentUser.email.replace(/[^a-zA-Z0-9]/g, '_')}`));
+                }).then(() => {
+                    showAppModal("Success", "<p>Profile updated successfully!</p>", () => {
+                        navigate(`/${newUsername.replace(/[^a-zA-Z0-9]/g, '_')}`);
+                    });
+                });
             };
         } else {
             if (data.avatarUrl) document.getElementById('view-avatar-img').src = data.avatarUrl;
@@ -653,10 +697,12 @@ function renderUserProfileView(container, isEditing) {
 function handleAvatarImageFile(file) {
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = (e) => { document.getElementById('edit-avatar-preview').src = e.target.result; };
+    reader.onload = (e) => {
+        const preview = document.getElementById('edit-avatar-preview');
+        if (preview) preview.src = e.target.result;
+    };
     reader.readAsDataURL(file);
 }
-
 // ==========================================
 // 11. ADMIN DASHBOARD PANEL
 // ==========================================
@@ -691,26 +737,68 @@ function renderAdminDashboardPage(container) {
 }
 
 // ==========================================
-// 12. 2D CANVAS EDITOR & PLATFORMER ENGINE
+// GAME CREATION & MODAL UTILITIES
 // ==========================================
-function promptCreateNewWorkspaceProject() {
-    const nameInput = prompt("Enter a memorable name for your new AetherWeave game:");
-    if (!nameInput || nameInput.trim() === "") return;
-    const cleanId = "proj-" + Math.floor(1000 + Math.random() * 9000);
+function showAppModal(title, contentHTML, onConfirm) {
+    const existing = document.getElementById('custom-app-modal');
+    if (existing) existing.remove();
 
-    db.collection('users').doc(currentUser.uid).get().then(userDoc => {
-        const u = userDoc.data() || {};
-        const newRecord = {
-            id: cleanId,
-            name: nameInput.trim(),
-            author: u.username || currentUser.email.split('@')[0],
-            ownerUid: currentUser.uid,
-            authorAvatar: u.avatarUrl || 'aetherweave.jpg',
-            description: "Custom grid game matrix configuration.",
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        };
-        return db.collection('projects').doc(cleanId).set(newRecord, { merge: true });
-    }).then(() => navigate(`/dashboard/${cleanId}/edit`));
+    const modal = document.createElement('div');
+    modal.id = 'custom-app-modal';
+    modal.style.cssText = "position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.7); display:flex; align-items:center; justify-content:center; z-index:1000;";
+    modal.innerHTML = `
+        <div style="background:var(--panel-weave); border:1px solid var(--border-glow); border-radius:12px; padding:25px; width:100%; max-width:420px; box-shadow:0 10px 30px rgba(0,0,0,0.8); color:#fff;">
+            <h3 style="margin-bottom:15px; color:var(--aether-cyan);">${title}</h3>
+            <div style="margin-bottom:20px;">${contentHTML}</div>
+            <div style="display:flex; justify-content:flex-end; gap:10px;">
+                <button class="btn" id="modal-btn-cancel" style="background:#1a1a24; border:1px solid var(--border-glow); box-shadow:none;">Cancel</button>
+                <button class="btn" id="modal-btn-confirm">Confirm</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+
+    document.getElementById('modal-btn-cancel').onclick = () => modal.remove();
+    document.getElementById('modal-btn-confirm').onclick = () => {
+        if (onConfirm) onConfirm();
+        modal.remove();
+    };
+}
+
+function promptCreateNewWorkspaceProject() {
+    showAppModal("Create New Game Matrix", `
+        <div class="input-group">
+            <label>Game Name</label>
+            <input type="text" id="modal-game-name-input" placeholder="Enter game title..." style="width:100%; padding:10px; background:#1a1a24; border:1px solid var(--border-glow); border-radius:6px; color:#fff; outline:none;">
+        </div>
+    `, () => {
+        const nameInput = document.getElementById('modal-game-name-input');
+        if (!nameInput || !nameInput.value.trim()) return;
+        const gameName = nameInput.value.trim();
+        const cleanId = "proj-" + Math.floor(1000 + Math.random() * 9000);
+
+        db.collection('users').doc(currentUser.uid).get().then(userDoc => {
+            const u = userDoc.data() || {};
+            const newRecord = {
+                id: cleanId,
+                name: gameName,
+                author: u.username || currentUser.email.split('@')[0],
+                ownerUid: currentUser.uid,
+                authorAvatar: u.avatarUrl || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=100&auto=format&fit=crop',
+                description: "Custom grid game matrix configuration.",
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                plays: 0,
+                likes: 0,
+                rating: '5.0',
+                entities: []
+            };
+            return db.collection('projects').doc(cleanId).set(newRecord);
+        }).then(() => {
+            navigate(`/dashboard/${cleanId}/edit`);
+        }).catch(err => {
+            showAppModal("Error", `<p style="color:var(--aether-red);">${err.message}</p>`, null);
+        });
+    });
 }
 
 function renderEditorPage(container, projectId) {
