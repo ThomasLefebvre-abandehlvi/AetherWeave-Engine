@@ -52,31 +52,40 @@ const CANVAS_HEIGHT = 384;
 let runtimePlayer = { x: 0, y: 0, vx: 0, vy: 0, spawnX: 0, spawnY: 0 };
 let keys = {};
 
+// --- DYNAMIC DISCOVERY DATABASE STATES ---
+let dashboardActiveTab = 'feed'; // Tracks 'feed' or 'my-projects' layout profiles
+let localProjectsMemory = [
+    { id: 'proj-8912', name: 'Aether Runner', author: ' ThomasLefebvre', timestamp: 'Just Now', description: 'Test physics simulator grids.' }
+];
+
 // --- SECURE ROUTER INTERCEPTOR ---
-// --- UPDATED SECURE ROUTER INTERCEPTOR ---
 function router() {
     gameState.currentPath = window.location.pathname;
     const app = document.getElementById('app-view');
     
     if (animationFrameId) cancelAnimationFrame(animationFrameId);
 
-    // 1. CHECK FOR 404 PATHS FIRST
-    // If the path isn't home and doesn't start with a project workspace, it's a 404 error!
-    if (gameState.currentPath !== '/' && gameState.currentPath !== '' && !gameState.currentPath.startsWith('/new/')) {
+    // 1. HIGH-PRIORITY INTERCEPT: Handshake Authorization Page Bridge 
+    if (gameState.currentPath === '/google-sign-in') {
+        renderGoogleHandshakePage(app);
+        return;
+    }
+
+    // 2. CHECK FOR 404 PATHS FIRST
+    if (gameState.currentPath !== '/' && gameState.currentPath !== '' && !gameState.currentPath.startsWith('/new/') && gameState.currentPath !== '/admin') {
         render404Page(app);
         return;
     }
 
-    // 2. CHECK FOR LOGIN VALIDATION SECOND
-    // If they are on a valid path but logged out, redirect them to the sign-up page
+    // 3. CHECK FOR LOGIN VALIDATION SECOND
     if (!currentUser) {
         renderAdvertisementPage(app);
         return;
     }
 
-    // 3. CORE REGISTERED APPLICATION VIEWS
+    // 4. CORE REGISTERED HUB ROUTING CHANNELS
     if (gameState.currentPath === '/' || gameState.currentPath === '') {
-        renderHomePage(app);
+        renderPlatformDashboardPage(app);
     } else if (gameState.currentPath === '/admin') {
         if (isAdmin(currentUser.email)) {
             renderAdminDashboardPage(app);
@@ -89,6 +98,7 @@ function router() {
         initEditorEngine();
     }
 }
+
 
 function isAdmin(email) {
     if (!email) return false;
@@ -543,42 +553,199 @@ function renderAdminDashboardPage(container) {
     });
 }
 
-function executeGoogleAuthAction() {
+// =========================================================================
+// 1. INTERACTIVE GOOGLE HANDSHAKE PORTAL SCREEN
+// =========================================================================
+function renderGoogleHandshakePage(container) {
+    container.innerHTML = `
+        <div class="handshake-container">
+            <div class="handshake-bridge">
+                <img src="aetherweave.jpg" class="handshake-logo" alt="AetherWeave Icon">
+                <div class="meeting-hands">🤝</div>
+                <img src="google.jpg" class="handshake-logo" style="background:#fff; padding:10px; width:70px; height:70px;" alt="Google Icon">
+            </div>
+            
+            <h2 class="brand-logo" style="font-size: 2.2rem; margin-bottom:10px;">Authorizing Safe Connection</h2>
+            <p style="color:var(--text-thread); font-size:1.1rem; margin:0;" id="handshake-status">Synchronizing authentication security token meshes...</p>
+            
+            <footer style="position:absolute; bottom:40px; font-family:monospace; letter-spacing:1px; color:var(--aether-cyan); text-shadow: 0 0 10px var(--aether-cyan-glow);">
+                Connecting to Google...
+            </footer>
+        </div>
+    `;
+
+    // Initialize Google Pop-up window authentication actions
     const provider = new firebase.auth.GoogleAuthProvider();
     auth.signInWithPopup(provider).then((cred) => {
+        // Sync registered account profiles directly down into Firestore tables
         return db.collection('users').doc(cred.user.uid).set({
             uid: cred.user.uid,
             email: cred.user.email,
             registeredAt: firebase.firestore.FieldValue.serverTimestamp()
-        }, { merge: true });
-    }).catch(err => alert("Google Sign-In Error: " + err.message));
-}
-
-function renderAdminDashboardPage(container) {
-    container.innerHTML = `
-        <div class="admin-layout">
-            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-glow); padding-bottom:20px;">
-                <h1 class="brand-logo" style="font-size:2.5rem; margin:0;">Loom Administration</h1>
-                <button class="btn" id="btn-admin-back">← Back to Engine</button>
-            </div>
-            <p style="margin-top:20px;">Secure overview of users synced through your cloud Firestore datastore clusters.</p>
-            <div class="admin-grid" id="admin-user-list"><p style="color:#8e8ea0;">Retrieving active databases...</p></div>
-        </div>
-    `;
-    document.getElementById('btn-admin-back').addEventListener('click', () => navigate('/'));
-
-    db.collection('users').orderBy('registeredAt', 'desc').get().then(snapshot => {
-        const listContainer = document.getElementById('admin-user-list');
-        listContainer.innerHTML = "";
-        snapshot.forEach(doc => {
-            const data = doc.data();
-            const dateDisplay = data.registeredAt ? new Date(data.registeredAt.seconds * 1000).toLocaleDateString() : 'Pending Sync';
-            const card = document.createElement('div');
-            card.className = "user-row";
-            card.innerHTML = `<div style="font-weight:bold; color:var(--aether-cyan); margin-bottom:5px;">User Node Instance</div><div style="font-size:0.9rem; margin-bottom:5px;">Email: <b>${data.email}</b></div><div style="font-size:0.8rem; color:#8e8ea0;">Registered On: ${dateDisplay}</div>`;
-            listContainer.appendChild(card);
+        }, { merge: true }).then(() => {
+            document.getElementById('handshake-status').innerText = "Security verified! Redirecting to dashboard loom...";
+            setTimeout(() => navigate('/'), 1200);
         });
     }).catch(err => {
-        document.getElementById('admin-user-list').innerHTML = `<p style="color:var(--aether-red);">Database Error: ${err.message}</p>`;
+        alert("Google Authentication Intercept Error: " + err.message);
+        navigate('/');
     });
+}
+
+// Redirect trigger for your ad screen button layout
+function executeGoogleAuthAction() {
+    navigate('/google-sign-in');
+}
+
+// =========================================================================
+// 2. MULTI-TAB DISCOVERY CORE DASHBOARD SYSTEM
+// =========================================================================
+function renderPlatformDashboardPage(container) {
+    let adminNavSnippet = isAdmin(currentUser.email) ? `<button class="tab-btn" onclick="navigate('/admin')">🛡️ Admin</button>` : '';
+
+    container.innerHTML = `
+        <div class="dashboard-wrapper">
+            <!-- Global Platform Navigation Header -->
+            <nav class="dashboard-nav">
+                <div style="display:flex; align-items:center; gap:12px;">
+                    <img src="aetherweave.jpg" style="width:32px; height:32px; border-radius:6px;" alt="Loom Logo">
+                    <span class="project-title" style="font-size:1.3rem;">AetherWeave</span>
+                </div>
+                <div class="nav-tabs">
+                    <button class="tab-btn ${dashboardActiveTab === 'feed' ? 'active' : ''}" onclick="switchDashboardTab('feed')">🌍 Global Feed</button>
+                    <button class="tab-btn ${dashboardActiveTab === 'my-projects' ? 'active' : ''}" onclick="switchDashboardTab('my-projects')">📂 My Projects</button>
+                    ${adminNavSnippet}
+                </div>
+                <div style="display:flex; align-items:center; gap:15px;">
+                    <span style="font-size:0.85rem; color:var(--text-thread);">Active: <b>${currentUser.email}</b></span>
+                    <button class="btn" onclick="auth.signOut()" style="padding:8px 16px; font-size:0.8rem; background:#dc3545; box-shadow:none;">Sign Out</button>
+                </div>
+            </nav>
+
+            <!-- Dynamic Viewport Injection Workspace -->
+            <div class="dashboard-content" id="dashboard-tab-view"></div>
+        </div>
+    `;
+
+    renderActiveTabContent();
+}
+
+function switchDashboardTab(tabId) {
+    dashboardActiveTab = tabId;
+    renderPlatformDashboardPage(document.getElementById('app-view'));
+}
+
+function renderActiveTabContent() {
+    const contentArea = document.getElementById('dashboard-tab-view');
+    
+    if (dashboardActiveTab === 'feed') {
+        // GLOBAL COMMUNITY GAME DISCOVERY TILES
+        contentArea.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-glow); padding-bottom:15px; margin-bottom:20px;">
+                <h2 style="margin:0; font-size:1.8rem;">Global Project Loom</h2>
+                <span style="color:var(--text-thread); font-size:0.9rem;">Auto-Sorted by Latest Creations</span>
+            </div>
+            <div class="project-card-grid">
+                <!-- Sandbox Level Sample Tile -->
+                <div class="project-card">
+                    <div style="font-weight:bold; font-size:1.2rem; color:var(--aether-cyan);">🚀 Neon Labyrinth</div>
+                    <div class="card-meta"><span>By: AlphaDev</span> <span>Oct 21, 2026</span></div>
+                    <p style="color:var(--text-thread); font-size:0.9rem; margin:5px 0;">Test your reflex parameters across a dense grid coordinate array sequence layout.</p>
+                    <button class="btn" onclick="navigate('/new/neon-labyrinth')" style="width:100%; padding:10px; font-size:0.85rem; margin-top:auto; background:var(--aether-purple); box-shadow:none;">▶️ Play Sandbox</button>
+                </div>
+                
+                <!-- Dynamic Player Projects Synchronized Loop -->
+                ${localProjectsMemory.map(proj => `
+                    <div class="project-card">
+                        <div style="font-weight:bold; font-size:1.2rem; color:var(--aether-cyan);">🎮 ${proj.name}</div>
+                        <div class="card-meta"><span>By: ${proj.author}</span> <span>${proj.timestamp}</span></div>
+                        <p style="color:var(--text-thread); font-size:0.9rem; margin:5px 0;">${proj.description}</p>
+                        <button class="btn" onclick="navigate('/new/${proj.id}')" style="width:100%; padding:10px; font-size:0.85rem; margin-top:auto; background:var(--aether-purple); box-shadow:none;">▶️ Play Sandbox</button>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    } else if (dashboardActiveTab === 'my-projects') {
+        // PERSONAL PROJECT REPOSITORY WITH ACTION TOOLBARS
+        contentArea.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-glow); padding-bottom:15px; margin-bottom:20px;">
+                <h2 style="margin:0; font-size:1.8rem;">My Development Repositories</h2>
+                <button class="btn" onclick="promptCreateNewWorkspaceProject()" style="padding:10px 20px; font-size:0.9rem;">➕ Weave New Project</button>
+            </div>
+            
+            <div class="project-card-grid">
+                ${localProjectsMemory.map(proj => `
+                    <div class="project-card" style="border-left: 4px solid var(--aether-cyan);">
+                        <div style="font-weight:bold; font-size:1.3rem;">${proj.name}</div>
+                        <div style="font-size:0.8rem; color:var(--text-thread); font-family:monospace;">Workspace ID: ${proj.id}</div>
+                        <hr style="border:0; border-top:1px solid var(--border-glow); width:100%; margin:10px 0;">
+                        
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:auto;">
+                            <button class="btn" onclick="navigate('/new/${proj.id}')" style="padding:8px; font-size:0.85rem; background:#28a745; box-shadow:none;">🛠️ Edit Matrix</button>
+                            <button class="btn" onclick="renderProjectOverviewSettingsCard('${proj.id}')" style="padding:8px; font-size:0.85rem; background:#1a1a24; border:1px solid var(--border-glow); box-shadow:none;">⚙️ Settings</button>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+}
+
+// =========================================================================
+// 3. INTERACTION FORM PROMPTS & SETTINGS MODAL PANELS
+// =========================================================================
+function promptCreateNewWorkspaceProject() {
+    const nameInput = prompt("Enter a memorable name for your new AetherWeave project:");
+    if (!nameInput || nameInput.trim() === "") return;
+
+    const cleanId = "proj-" + Math.floor(1000 + Math.random() * 9000);
+    const newRecord = {
+        id: cleanId,
+        name: nameInput.trim(),
+        author: currentUser.email.split('@')[0],
+        timestamp: "Just Now",
+        description: "Custom user grid matrix configuration canvas blueprint."
+    };
+
+    localProjectsMemory.unshift(newRecord); // Prepend to sort by latest auto
+    renderActiveTabContent();
+}
+
+function renderProjectOverviewSettingsCard(projectId) {
+    const targetProject = localProjectsMemory.find(p => p.id === projectId);
+    if (!targetProject) return;
+
+    const contentArea = document.getElementById('dashboard-tab-view');
+    contentArea.innerHTML = `
+        <div style="background:var(--panel-weave); border:1px solid var(--border-glow); border-radius:12px; padding:30px; text-align:left; max-width:600px; margin:0 auto;">
+            <h2 style="margin:0 0 10px 0; color:var(--aether-cyan);">⚙️ Project Overview Settings</h2>
+            <p style="font-size:0.9rem; margin-bottom:20px;">Manage metadata parameters for workspace: <b>${targetProject.name}</b></p>
+            
+            <div class="input-group">
+                <label>Display Project Name</label>
+                <input type="text" id="edit-proj-name" value="${targetProject.name}">
+            </div>
+            
+            <div class="input-group" style="margin-top: 15px;">
+                <label>Project Description</label>
+                <textarea id="edit-proj-desc" style="background:#1a1a24; border:1px solid var(--border-glow); color:white; padding:12px; border-radius:6px; font-size:1rem; width:100%; height:80px; outline:none; resize:vertical;">${targetProject.description || ''}</textarea>
+            </div>
+
+            <button class="btn" id="btn-save-project-settings" style="margin-top:20px;">Save Changes</button>
+        </div>
+    `;
+
+    // Hook up the save event listener properly
+    document.getElementById('btn-save-project-settings').addEventListener('click', () => {
+        saveProjectMetadataChanges(projectId);
+    });
+}
+
+function saveProjectMetadataChanges(projectId) {
+    const targetProject = localProjectsMemory.find(p => p.id === projectId);
+    if (targetProject) {
+        targetProject.name = document.getElementById('edit-proj-name').value;
+        targetProject.description = document.getElementById('edit-proj-desc').value;
+    }
+    switchDashboardTab('my-projects');
 }
